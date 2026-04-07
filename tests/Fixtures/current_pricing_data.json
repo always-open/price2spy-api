@@ -1,0 +1,99 @@
+{
+    "products": {
+        "product": [
+            {
+                "urls": {
+                    "url": [
+                        {
+                            "urlId": 296750984,
+                            "url": "https://www.target.com/p/systane-complete-eye-drops/-/A-80325878",
+                            "productName": "Systane Complete Eye Drops",
+                            "siteHumanName": "Target",
+                            "siteCountryISOCode": "US",
+                            "showInReports": true,
+                            "active": true,
+                            "counterFailed": 0,
+                            "lastChecked": "2026-04-01 04:32:16",
+                            "lastMeasurement": {
+                                "dateChecked": "2026-03-24 02:46:26",
+                                "price": {
+                                    "currency": "USD",
+                                    "amount": 14.99
+                                },
+                                "available": true,
+                                "isOnPromotion": false
+                            },
+                            "dateAdded": "2026-02-20 21:29:09",
+                            "addedById": 112637,
+                            "modifiedById": 112637
+                        },
+                        {
+                            "urlId": 279278685,
+                            "url": "https://www.kroger.com/p/alcon-systane-complete-optimal-dry-eye-relief-drops/0030065048110",
+                            "productName": "Alcon Systane Complete Optimal Dry Eye Relief Drops",
+                            "siteHumanName": "Kroger",
+                            "siteCountryISOCode": "US",
+                            "showInReports": true,
+                            "active": true,
+                            "image1Url": "https://www.kroger.com/product/images/large/front/0030065048110",
+                            "counterFailed": 1,
+                            "lastError": "There's been a problem while loading a page.",
+                            "lastChecked": "2026-04-01 04:42:11",
+                            "lastMeasurement": {
+                                "dateChecked": "2026-03-31 16:30:44",
+                                "price": {
+                                    "currency": "USD",
+                                    "amount": 16.79
+                                },
+                                "available": true,
+                                "isOnPromotion": false
+                            },
+                            "secondToLastMeasurement": {
+                                "dateChecked": "2026-03-31 04:32:55",
+                                "price": {
+                                    "currency": "USD",
+                                    "amount": 16.49
+                                },
+                                "available": true,
+                                "isOnPromotion": false
+                            },
+                            "dateAdded": "2025-10-24 00:55:26",
+                            "dateModified": "2026-02-20 21:29:09",
+                            "addedById": 5526,
+                            "modifiedById": 112637
+                        }
+                    ]
+                },
+                "productId": 550487637,
+                "productName": "SYSTANE COMPLETE Lubricant Eye Drops 10ml",
+                "checkFrequencyType": "HOURS",
+                "checkFrequencyInterval": 6,
+                "active": true,
+                "showInReports": true,
+                "sku": "100173789",
+                "internalId": "300650481106",
+                "brandName": "Systane",
+                "brandId": 3260052,
+                "minPrice": {
+                    "currency": "USD",
+                    "amount": 14.79
+                },
+                "maxPrice": {
+                    "currency": "USD",
+                    "amount": 19.99
+                },
+                "lastChecked": "2026-04-01 04:42:11",
+                "nextChecked": "2026-04-01 10:30:06",
+                "lastChange": "2026-03-31 16:30:44",
+                "targetPrice": 14.95,
+                "dateAdded": "2025-09-21 17:02:09",
+                "dateModified": "2026-03-31 20:43:08",
+                "addedById": 112637,
+                "modifiedById": 112637,
+                "categoryName": null,
+                "categoryId": null,
+                "costPrice": null
+            }
+        ]
+    }
+}
