@@ -65,13 +65,19 @@ class Price2SpyApiClient
         }, 2000);
     }
 
-    public function getCurrentPricingData(bool $active = true): CurrentPricingDataResponse
+    public function getCurrentPricingData(bool $active = true, ?int $p2sProductId = null): CurrentPricingDataResponse
     {
         try {
+            $payload = ['active' => $active];
+
+            if ($p2sProductId !== null) {
+                $payload['productId'] = $p2sProductId;
+            }
+
             $response = $this->makeRequest(
                 'post',
                 rtrim($this->baseUrl, '/').'/get-current-pricing-data',
-                ['active' => $active],
+                $payload,
                 3,
             );
         } catch (Throwable $e) {
