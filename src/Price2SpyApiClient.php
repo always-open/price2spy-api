@@ -3,6 +3,7 @@
 namespace AlwaysOpen\Price2SpyApi;
 
 use AlwaysOpen\Price2SpyApi\DTOs\CurrentPricingDataResponse;
+use AlwaysOpen\Price2SpyApi\DTOs\GetProductsResponse;
 use GuzzleHttp\Promise\PromiseInterface;
 use GuzzleHttp\Psr7\Request;
 use Illuminate\Http\Client\Response;
@@ -97,6 +98,36 @@ class Price2SpyApiClient
         }, $products);
 
         return CurrentPricingDataResponse::from([
+            'products' => $products,
+        ]);
+    }
+
+    public function getProducts(bool $active = true, ?int $p2sProductId = null): GetProductsResponse
+    {
+        try {
+            $payload = ['active' => $active];
+
+            if ($p2sProductId !== null) {
+                $payload['productId'] = $p2sProductId;
+            }
+
+            $response = $this->makeRequest(
+                'post',
+                rtrim($this->baseUrl, '/').'/get-products',
+                $payload,
+                3,
+            );
+        } catch (Throwable $e) {
+            throw new RuntimeException('Price2Spy API request failed: '.$e->getMessage(), $e->getCode(), $e);
+        }
+
+        if (! $response->successful()) {
+            throw new RuntimeException('Price2Spy API request failed: '.$response->body(), $response->getStatusCode());
+        }
+
+        $products = $response->json('product', []);
+
+        return GetProductsResponse::from([
             'products' => $products,
         ]);
     }

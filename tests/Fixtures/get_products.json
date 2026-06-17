@@ -1,0 +1,66 @@
+{
+    "product": [
+        {
+            "productId": 550487637,
+            "productName": "SYSTANE COMPLETE Lubricant Eye Drops 10ml",
+            "checkFrequencyType": "HOURS",
+            "checkFrequencyInterval": 6,
+            "active": true,
+            "showInReports": true,
+            "sku": "100173789",
+            "internalId": "300650481106",
+            "brandName": "Systane",
+            "brandId": 3260052,
+            "minPrice": {
+                "currency": "USD",
+                "amount": 14.79
+            },
+            "maxPrice": {
+                "currency": "USD",
+                "amount": 19.99
+            },
+            "lastChecked": "2026-04-01 04:42:11",
+            "nextChecked": "2026-04-01 10:30:06",
+            "lastChange": "2026-03-31 16:30:44",
+            "targetPrice": 14.95,
+            "dateAdded": "2025-09-21 17:02:09",
+            "dateModified": "2026-03-31 20:43:08",
+            "addedById": 112637,
+            "modifiedById": 112637,
+            "categoryName": null,
+            "categoryId": null,
+            "costPrice": null
+        },
+        {
+            "productId": 550487638,
+            "productName": "SYSTANE ULTRA Lubricant Eye Drops 10ml",
+            "checkFrequencyType": "DAYS",
+            "checkFrequencyInterval": 1,
+            "active": true,
+            "showInReports": true,
+            "sku": "100173790",
+            "internalId": "300650481107",
+            "brandName": "Systane",
+            "brandId": 3260052,
+            "minPrice": {
+                "currency": "USD",
+                "amount": 12.49
+            },
+            "maxPrice": {
+                "currency": "USD",
+                "amount": 17.99
+            },
+            "lastChecked": "2026-04-01 05:12:11",
+            "nextChecked": "2026-04-02 05:12:11",
+            "lastChange": "2026-03-30 12:10:00",
+            "targetPrice": 12.95,
+            "dateAdded": "2025-09-21 17:02:09",
+            "dateModified": "2026-03-31 20:43:08",
+            "addedById": 112637,
+            "modifiedById": 112637,
+            "categoryName": null,
+            "categoryId": null,
+            "costPrice": null
+        }
+    ]
+}

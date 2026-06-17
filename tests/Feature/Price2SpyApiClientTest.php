@@ -72,4 +72,102 @@ class Price2SpyApiClientTest extends BaseTest
 
         $client->getCurrentPricingData();
     }
+
+    public function test_get_products()
+    {
+        Http::fake([
+            'https://api.price2spy.com/rest/v1/get-products' => Http::response(
+                $this->getFixtureJsonContent('get_products.json'),
+                200,
+            ),
+        ]);
+
+        $client = new Price2SpyApiClient;
+
+        $response = $client->getProducts();
+
+        $this->assertNotEmpty($response->products);
+        $this->assertCount(2, $response->products);
+
+        $product = $response->products[0];
+        $this->assertEquals(550487637, $product->productId);
+        $this->assertEquals('SYSTANE COMPLETE Lubricant Eye Drops 10ml', $product->productName);
+        $this->assertEquals('Systane', $product->brandName);
+        $this->assertTrue($product->active);
+        $this->assertEquals(14.79, $product->minPrice->amount);
+        $this->assertEquals(19.99, $product->maxPrice->amount);
+        $this->assertEquals(14.95, $product->targetPrice);
+    }
+
+    public function test_get_products_sends_active_and_product_id()
+    {
+        Http::fake([
+            'https://api.price2spy.com/rest/v1/get-products' => Http::response(
+                $this->getFixtureJsonContent('get_products.json'),
+                200,
+            ),
+        ]);
+
+        $client = new Price2SpyApiClient;
+
+        $client->getProducts(active: false, p2sProductId: 550487637);
+
+        Http::assertSent(function ($request) {
+            return $request->url() === 'https://api.price2spy.com/rest/v1/get-products'
+                && $request['active'] === false
+                && $request['productId'] === 550487637;
+        });
+    }
+
+    public function test_get_products_defaults_active_true_without_product_id()
+    {
+        Http::fake([
+            'https://api.price2spy.com/rest/v1/get-products' => Http::response(
+                $this->getFixtureJsonContent('get_products.json'),
+                200,
+            ),
+        ]);
+
+        $client = new Price2SpyApiClient;
+
+        $client->getProducts();
+
+        Http::assertSent(function ($request) {
+            return $request['active'] === true
+                && ! isset($request['productId']);
+        });
+    }
+
+    public function test_get_products_empty_response()
+    {
+        Http::fake([
+            'https://api.price2spy.com/rest/v1/get-products' => Http::response(
+                json_encode(['product' => []]),
+                200,
+            ),
+        ]);
+
+        $client = new Price2SpyApiClient;
+
+        $response = $client->getProducts();
+
+        $this->assertEmpty($response->products);
+    }
+
+    public function test_get_products_failed_request()
+    {
+        Http::fake([
+            'https://api.price2spy.com/rest/v1/get-products' => Http::response(
+                'Internal Server Error',
+                500,
+            ),
+        ]);
+
+        $client = new Price2SpyApiClient;
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('Price2Spy API request failed');
+
+        $client->getProducts();
+    }
 }
