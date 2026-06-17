@@ -41,6 +41,7 @@ class BaseTest extends TestCase
     protected function getPackageProviders($app)
     {
         return [
+            \Spatie\LaravelData\LaravelDataServiceProvider::class,
             Price2SpyApiServiceProvider::class,
         ];
     }
