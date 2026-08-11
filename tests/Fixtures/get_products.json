@@ -29,7 +29,10 @@
             "modifiedById": 112637,
             "categoryName": null,
             "categoryId": null,
-            "costPrice": null
+            "costPrice": null,
+            "customField1": "AISLE-12",
+            "customField2": "Vision Care",
+            "customField3": null
         },
         {
             "productId": 550487638,

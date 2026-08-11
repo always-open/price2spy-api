@@ -31,6 +31,9 @@ class Product extends Data
         public readonly ?string $categoryName,
         public readonly ?int $categoryId,
         public readonly ?float $costPrice,
+        public readonly ?string $customField1,
+        public readonly ?string $customField2,
+        public readonly ?string $customField3,
         #[DataCollectionOf(ProductUrl::class)]
         public readonly ?array $urls,
     ) {}
