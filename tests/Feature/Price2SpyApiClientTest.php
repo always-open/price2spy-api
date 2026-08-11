@@ -97,6 +97,33 @@ class Price2SpyApiClientTest extends BaseTest
         $this->assertEquals(14.79, $product->minPrice->amount);
         $this->assertEquals(19.99, $product->maxPrice->amount);
         $this->assertEquals(14.95, $product->targetPrice);
+        $this->assertEquals('AISLE-12', $product->customField1);
+        $this->assertEquals('Vision Care', $product->customField2);
+        $this->assertNull($product->customField3);
+
+        // Custom fields are optional; absent keys hydrate as null.
+        $this->assertNull($response->products[1]->customField1);
+    }
+
+    public function test_get_products_casts_numeric_custom_fields_to_string()
+    {
+        Http::fake([
+            'https://api.price2spy.com/rest/v1/get-products' => Http::response(
+                json_encode(['product' => [[
+                    'productId' => 550487637,
+                    'customField1' => 12345,
+                    'customField2' => 9.99,
+                ]]]),
+                200,
+            ),
+        ]);
+
+        $client = new Price2SpyApiClient;
+
+        $product = $client->getProducts()->products[0];
+
+        $this->assertSame('12345', $product->customField1);
+        $this->assertSame('9.99', $product->customField2);
     }
 
     public function test_get_products_sends_active_and_product_id()
