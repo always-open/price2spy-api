@@ -97,6 +97,8 @@ class Price2SpyApiClientTest extends BaseTest
         $this->assertEquals(14.79, $product->minPrice->amount);
         $this->assertEquals(19.99, $product->maxPrice->amount);
         $this->assertEquals(14.95, $product->targetPrice);
+        $this->assertSame('12345', $product->customField2);
+        $this->assertNull($response->products[1]->customField2);
     }
 
     public function test_get_products_sends_active_and_product_id()

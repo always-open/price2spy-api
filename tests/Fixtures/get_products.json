@@ -29,7 +29,8 @@
             "modifiedById": 112637,
             "categoryName": null,
             "categoryId": null,
-            "costPrice": null
+            "costPrice": null,
+            "customField2": "12345"
         },
         {
             "productId": 550487638,
