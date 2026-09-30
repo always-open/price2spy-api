@@ -1,0 +1,43 @@
+name: run-tests
+
+on:
+  push:
+    branches: [main, 1.x]
+  pull_request:
+    branches: [main, 1.x]
+
+jobs:
+  test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest]
+        php: [8.3, 8.4, 8.5]
+        laravel: [11.*]
+        include:
+          - laravel: 11.*
+
+    name: P${{ matrix.php }} - L${{ matrix.laravel }} - ${{ matrix.os }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          extensions: curl, mbstring
+          coverage: none
+
+      - name: Setup problem matchers
+        run: |
+          echo "::add-matcher::${{ runner.tool_cache }}/php.json"
+          echo "::add-matcher::${{ runner.tool_cache }}/phpunit.json"
+
+      - name: Install composer dependencies
+        uses: ramsey/composer-install@v3
+
+      - name: Execute tests
+        run: composer test
