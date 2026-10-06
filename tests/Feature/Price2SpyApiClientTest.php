@@ -221,11 +221,15 @@ class Price2SpyApiClientTest extends BaseTest
         });
     }
 
+    /**
+     * The empty catalogue shape is assumed from the pricing endpoint's captured
+     * empty body ({"products":{"product":[]}}), not captured from get-products.
+     */
     public function test_get_products_empty_response()
     {
         Http::fake([
             'https://api.price2spy.com/rest/v1/get-products' => Http::response(
-                json_encode(['product' => []]),
+                $this->getFixtureJsonContent('get_products_empty.json'),
                 200,
             ),
         ]);
@@ -234,7 +238,40 @@ class Price2SpyApiClientTest extends BaseTest
 
         $response = $client->getProducts();
 
-        $this->assertEmpty($response->products);
+        $this->assertSame([], $response->products);
+    }
+
+    #[DataProvider('malformedProductsBodies')]
+    public function test_get_products_malformed_response(string $body)
+    {
+        Http::fake([
+            'https://api.price2spy.com/rest/v1/get-products' => Http::response($body, 200),
+        ]);
+
+        $client = new Price2SpyApiClient;
+
+        try {
+            $client->getProducts();
+            $this->fail('Expected a MalformedResponseException.');
+        } catch (MalformedResponseException $e) {
+            $this->assertInstanceOf(RuntimeException::class, $e);
+            $this->assertSame(200, $e->getCode());
+            $this->assertStringContainsString('malformed products response', $e->getMessage());
+        }
+    }
+
+    public static function malformedProductsBodies(): array
+    {
+        return [
+            'not json' => ['<html>Service Unavailable</html>'],
+            'empty body' => [''],
+            'error envelope' => [json_encode(['error' => 'Invalid API key'])],
+            'product key missing' => [json_encode(['products' => []])],
+            'product null' => [json_encode(['product' => null])],
+            'product not a list' => [json_encode(['product' => 'none'])],
+            'product is an object' => [json_encode(['product' => ['productId' => 1]])],
+            'product is a list of scalars' => [json_encode(['product' => ['none']])],
+        ];
     }
 
     public function test_get_products_failed_request()

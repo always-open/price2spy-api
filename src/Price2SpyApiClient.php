@@ -92,16 +92,8 @@ class Price2SpyApiClient
 
         // A genuine empty result keeps the full structure ({"products":{"product":[]}}),
         // captured from a productId-filtered request; the unfiltered catalogue request is
-        // assumed to share it. Anything other than a list of product objects means the
-        // body is not a pricing response.
-        $products = $response->json('products.product');
-
-        if (! $this->isListOfObjects($products)) {
-            throw new MalformedResponseException(
-                'Price2Spy API returned a malformed pricing response: '.mb_strimwidth($response->body(), 0, 500, '...'),
-                $response->status(),
-            );
-        }
+        // assumed to share it.
+        $products = $this->productList($response, 'products.product', 'pricing');
 
         $products = array_map(function (array $product) {
             $product['urls'] = $product['urls']['url'] ?? [];
@@ -137,7 +129,9 @@ class Price2SpyApiClient
             throw new RuntimeException('Price2Spy API request failed: '.$response->body(), $response->getStatusCode());
         }
 
-        $products = $response->json('product', []);
+        // The empty catalogue shape ({"product":[]}) is assumed from the pricing endpoint's
+        // captured empty body, which wraps its list the same way.
+        $products = $this->productList($response, 'product', 'products');
 
         return GetProductsResponse::from([
             'products' => $products,
@@ -145,21 +139,27 @@ class Price2SpyApiClient
     }
 
     /**
-     * Whether a decoded JSON value is a list whose every element is itself an object
-     * (decoded as an array) — the only shape the product DTO hydration accepts.
+     * The decoded list at $key of a 2xx response. Only a list whose every element is an
+     * object (decoded as an array) hydrates into product DTOs; any other shape means the
+     * body is not a $kind response.
+     *
+     * @throws MalformedResponseException
      */
-    private function isListOfObjects(mixed $value): bool
+    private function productList(Response $response, string $key, string $kind): array
     {
-        if (! is_array($value) || ! array_is_list($value)) {
-            return false;
+        $products = $response->json($key);
+
+        $isProductList = is_array($products)
+            && array_is_list($products)
+            && array_filter($products, fn ($product) => ! is_array($product)) === [];
+
+        if ($isProductList) {
+            return $products;
         }
 
-        foreach ($value as $item) {
-            if (! is_array($item)) {
-                return false;
-            }
-        }
-
-        return true;
+        throw new MalformedResponseException(
+            "Price2Spy API returned a malformed {$kind} response: ".mb_strimwidth($response->body(), 0, 500, '...'),
+            $response->status(),
+        );
     }
 }
