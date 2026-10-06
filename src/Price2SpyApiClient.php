@@ -4,6 +4,7 @@ namespace AlwaysOpen\Price2SpyApi;
 
 use AlwaysOpen\Price2SpyApi\DTOs\CurrentPricingDataResponse;
 use AlwaysOpen\Price2SpyApi\DTOs\GetProductsResponse;
+use AlwaysOpen\Price2SpyApi\Exceptions\MalformedResponseException;
 use GuzzleHttp\Promise\PromiseInterface;
 use GuzzleHttp\Psr7\Request;
 use Illuminate\Http\Client\Response;
@@ -89,7 +90,16 @@ class Price2SpyApiClient
             throw new RuntimeException('Price2Spy API request failed: '.$response->body(), $response->getStatusCode());
         }
 
-        $products = $response->json('products.product', []);
+        // A genuine empty result keeps the full structure ({"products":{"product":[]}}),
+        // so a missing or non-array list means the body is not a pricing response.
+        $products = $response->json('products.product');
+
+        if (! is_array($products)) {
+            throw new MalformedResponseException(
+                'Price2Spy API returned a malformed pricing response: '.mb_strimwidth($response->body(), 0, 500, '...'),
+                $response->status(),
+            );
+        }
 
         $products = array_map(function (array $product) {
             $product['urls'] = $product['urls']['url'] ?? [];

@@ -2,9 +2,12 @@
 
 namespace AlwaysOpen\Price2SpyApi\Tests\Feature;
 
+use AlwaysOpen\Price2SpyApi\Exceptions\MalformedResponseException;
 use AlwaysOpen\Price2SpyApi\Price2SpyApiClient;
 use AlwaysOpen\Price2SpyApi\Tests\BaseTest;
 use Illuminate\Support\Facades\Http;
+use PHPUnit\Framework\Attributes\DataProvider;
+use RuntimeException;
 
 class Price2SpyApiClientTest extends BaseTest
 {
@@ -44,7 +47,7 @@ class Price2SpyApiClientTest extends BaseTest
     {
         Http::fake([
             'https://api.price2spy.com/rest/v1/get-current-pricing-data' => Http::response(
-                json_encode(['products' => ['product' => []]]),
+                $this->getFixtureJsonContent('current_pricing_data_empty.json'),
                 200,
             ),
         ]);
@@ -53,7 +56,55 @@ class Price2SpyApiClientTest extends BaseTest
 
         $response = $client->getCurrentPricingData();
 
-        $this->assertEmpty($response->products);
+        $this->assertSame([], $response->products);
+    }
+
+    #[DataProvider('malformedPricingBodies')]
+    public function test_get_current_pricing_data_malformed_response(string $body)
+    {
+        Http::fake([
+            'https://api.price2spy.com/rest/v1/get-current-pricing-data' => Http::response($body, 200),
+        ]);
+
+        $client = new Price2SpyApiClient;
+
+        try {
+            $client->getCurrentPricingData();
+            $this->fail('Expected a MalformedResponseException.');
+        } catch (MalformedResponseException $e) {
+            $this->assertInstanceOf(RuntimeException::class, $e);
+            $this->assertSame(200, $e->getCode());
+            $this->assertStringContainsString('malformed pricing response', $e->getMessage());
+        }
+    }
+
+    public static function malformedPricingBodies(): array
+    {
+        return [
+            'not json' => ['<html>Service Unavailable</html>'],
+            'empty body' => [''],
+            'error envelope' => [json_encode(['error' => 'Invalid API key'])],
+            'products key missing' => [json_encode(['items' => ['product' => []]])],
+            'product key missing' => [json_encode(['products' => []])],
+            'products null' => [json_encode(['products' => null])],
+            'product not a list' => [json_encode(['products' => ['product' => 'none']])],
+        ];
+    }
+
+    public function test_get_current_pricing_data_malformed_response_message_is_truncated()
+    {
+        Http::fake([
+            'https://api.price2spy.com/rest/v1/get-current-pricing-data' => Http::response(str_repeat('x', 2000), 200),
+        ]);
+
+        $client = new Price2SpyApiClient;
+
+        try {
+            $client->getCurrentPricingData();
+            $this->fail('Expected a MalformedResponseException.');
+        } catch (MalformedResponseException $e) {
+            $this->assertLessThan(600, mb_strlen($e->getMessage()));
+        }
     }
 
     public function test_get_current_pricing_data_failed_request()
@@ -67,7 +118,7 @@ class Price2SpyApiClientTest extends BaseTest
 
         $client = new Price2SpyApiClient;
 
-        $this->expectException(\RuntimeException::class);
+        $this->expectException(RuntimeException::class);
         $this->expectExceptionMessage('Price2Spy API request failed');
 
         $client->getCurrentPricingData();
@@ -192,7 +243,7 @@ class Price2SpyApiClientTest extends BaseTest
 
         $client = new Price2SpyApiClient;
 
-        $this->expectException(\RuntimeException::class);
+        $this->expectException(RuntimeException::class);
         $this->expectExceptionMessage('Price2Spy API request failed');
 
         $client->getProducts();
