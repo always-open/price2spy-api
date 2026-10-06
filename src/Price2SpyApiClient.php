@@ -4,6 +4,7 @@ namespace AlwaysOpen\Price2SpyApi;
 
 use AlwaysOpen\Price2SpyApi\DTOs\CurrentPricingDataResponse;
 use AlwaysOpen\Price2SpyApi\DTOs\GetProductsResponse;
+use AlwaysOpen\Price2SpyApi\Exceptions\MalformedResponseException;
 use GuzzleHttp\Promise\PromiseInterface;
 use GuzzleHttp\Psr7\Request;
 use Illuminate\Http\Client\Response;
@@ -89,7 +90,10 @@ class Price2SpyApiClient
             throw new RuntimeException('Price2Spy API request failed: '.$response->body(), $response->getStatusCode());
         }
 
-        $products = $response->json('products.product', []);
+        // A genuine empty result keeps the full structure ({"products":{"product":[]}}),
+        // captured from a productId-filtered request; the unfiltered catalogue request is
+        // assumed to share it.
+        $products = $this->productList($response, 'products.product', 'pricing');
 
         $products = array_map(function (array $product) {
             $product['urls'] = $product['urls']['url'] ?? [];
@@ -125,10 +129,37 @@ class Price2SpyApiClient
             throw new RuntimeException('Price2Spy API request failed: '.$response->body(), $response->getStatusCode());
         }
 
-        $products = $response->json('product', []);
+        // The empty catalogue shape ({"product":[]}) is assumed from the pricing endpoint's
+        // captured empty body, which wraps its list the same way.
+        $products = $this->productList($response, 'product', 'products');
 
         return GetProductsResponse::from([
             'products' => $products,
         ]);
+    }
+
+    /**
+     * The decoded list at $key of a 2xx response. Only a list whose every element is an
+     * object (decoded as an array) hydrates into product DTOs; any other shape means the
+     * body is not a $kind response.
+     *
+     * @throws MalformedResponseException
+     */
+    private function productList(Response $response, string $key, string $kind): array
+    {
+        $products = $response->json($key);
+
+        $isProductList = is_array($products)
+            && array_is_list($products)
+            && array_filter($products, fn ($product) => ! is_array($product)) === [];
+
+        if ($isProductList) {
+            return $products;
+        }
+
+        throw new MalformedResponseException(
+            "Price2Spy API returned a malformed {$kind} response: ".mb_strimwidth($response->body(), 0, 500, '...'),
+            $response->status(),
+        );
     }
 }
