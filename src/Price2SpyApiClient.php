@@ -91,10 +91,12 @@ class Price2SpyApiClient
         }
 
         // A genuine empty result keeps the full structure ({"products":{"product":[]}}),
-        // so a missing or non-array list means the body is not a pricing response.
+        // captured from a productId-filtered request; the unfiltered catalogue request is
+        // assumed to share it. Anything other than a list of product objects means the
+        // body is not a pricing response.
         $products = $response->json('products.product');
 
-        if (! is_array($products)) {
+        if (! $this->isListOfObjects($products)) {
             throw new MalformedResponseException(
                 'Price2Spy API returned a malformed pricing response: '.mb_strimwidth($response->body(), 0, 500, '...'),
                 $response->status(),
@@ -140,5 +142,24 @@ class Price2SpyApiClient
         return GetProductsResponse::from([
             'products' => $products,
         ]);
+    }
+
+    /**
+     * Whether a decoded JSON value is a list whose every element is itself an object
+     * (decoded as an array) — the only shape the product DTO hydration accepts.
+     */
+    private function isListOfObjects(mixed $value): bool
+    {
+        if (! is_array($value) || ! array_is_list($value)) {
+            return false;
+        }
+
+        foreach ($value as $item) {
+            if (! is_array($item)) {
+                return false;
+            }
+        }
+
+        return true;
     }
 }

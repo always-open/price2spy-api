@@ -88,6 +88,9 @@ class Price2SpyApiClientTest extends BaseTest
             'product key missing' => [json_encode(['products' => []])],
             'products null' => [json_encode(['products' => null])],
             'product not a list' => [json_encode(['products' => ['product' => 'none']])],
+            'product null' => [json_encode(['products' => ['product' => null]])],
+            'product is an object' => [json_encode(['products' => ['product' => ['productId' => 1]]])],
+            'product is a list of scalars' => [json_encode(['products' => ['product' => ['none']]])],
         ];
     }
 
@@ -103,7 +106,9 @@ class Price2SpyApiClientTest extends BaseTest
             $client->getCurrentPricingData();
             $this->fail('Expected a MalformedResponseException.');
         } catch (MalformedResponseException $e) {
-            $this->assertLessThan(600, mb_strlen($e->getMessage()));
+            $this->assertStringEndsWith('...', $e->getMessage());
+            $this->assertStringContainsString(str_repeat('x', 497), $e->getMessage());
+            $this->assertStringNotContainsString(str_repeat('x', 498), $e->getMessage());
         }
     }
 
