@@ -4,7 +4,12 @@ namespace AlwaysOpen\Price2SpyApi;
 
 use AlwaysOpen\Price2SpyApi\DTOs\CurrentPricingDataResponse;
 use AlwaysOpen\Price2SpyApi\DTOs\GetProductsResponse;
+use AlwaysOpen\Price2SpyApi\DTOs\GetUrlsResponse;
+use AlwaysOpen\Price2SpyApi\DTOs\InsertProductRequest;
+use AlwaysOpen\Price2SpyApi\DTOs\InsertUrlRequest;
 use AlwaysOpen\Price2SpyApi\DTOs\UpdateProductRequest;
+use AlwaysOpen\Price2SpyApi\DTOs\UpdateUrlRequest;
+use AlwaysOpen\Price2SpyApi\Exceptions\CreatedIdUnknownException;
 use AlwaysOpen\Price2SpyApi\Exceptions\MalformedResponseException;
 use GuzzleHttp\Promise\PromiseInterface;
 use GuzzleHttp\Psr7\Request;
@@ -153,12 +158,90 @@ class Price2SpyApiClient
      */
     public function updateProduct(UpdateProductRequest $request): void
     {
+        $this->send('update-product', $request->toArray(), 3);
+    }
+
+    /**
+     * Create a product and return its new Price2Spy product id. Only the request's
+     * non-null fields are sent. Never retried: a create is not idempotent, so replaying
+     * it after a lost response could create a duplicate.
+     *
+     * @throws RuntimeException on a non-2xx response (the HTTP status is the code) or a
+     *                          transport failure (code 0, the cause chained as previous)
+     * @throws CreatedIdUnknownException when a 2xx body is not the new id; the item was
+     *                                   created, so do not retry
+     */
+    public function insertProduct(InsertProductRequest $request): int
+    {
+        return $this->newId($this->send('insert-product', $request->toArray(), 0), 'product');
+    }
+
+    /**
+     * Add a URL to a product and return its new Price2Spy URL id. Only the request's
+     * non-null fields are sent. Never retried, for the same reason as insertProduct().
+     *
+     * @throws RuntimeException on a non-2xx response (the HTTP status is the code) or a
+     *                          transport failure (code 0, the cause chained as previous)
+     * @throws CreatedIdUnknownException when a 2xx body is not the new id; the item was
+     *                                   created, so do not retry
+     */
+    public function insertUrl(InsertUrlRequest $request): int
+    {
+        return $this->newId($this->send('insert-url', $request->toArray(), 0), 'url');
+    }
+
+    /**
+     * Update one URL's settings. Only the request's non-null fields are sent; Price2Spy
+     * leaves the rest unchanged. The 2xx body is untyped, so nothing is read from it.
+     *
+     * @throws RuntimeException on a non-2xx response (the HTTP status is the code) or a
+     *                          transport failure (code 0, the cause chained as previous)
+     */
+    public function updateUrl(UpdateUrlRequest $request): void
+    {
+        $this->send('update-url', $request->toArray(), 3);
+    }
+
+    /**
+     * The URLs matching $id, each with its check health (active, counterFailed, lastError,
+     * lastChecked) and latest measurements.
+     *
+     * @param  'ID'|'SKU'|'INTERNAL_ID'|'NAME'|'ANY'  $idMode  which identifier $id is matched against
+     * @param  'LIKE'|'EQUAL'  $searchMode
+     *
+     * @throws RuntimeException on a non-2xx response (the HTTP status is the code) or a
+     *                          transport failure (code 0, the cause chained as previous)
+     * @throws MalformedResponseException when a 2xx body is not a urls response
+     */
+    public function getUrls(string $id, string $idMode = 'ID', string $searchMode = 'EQUAL'): GetUrlsResponse
+    {
+        $response = $this->send('get-urls', [
+            'id' => $id,
+            'idMode' => $idMode,
+            'searchMode' => $searchMode,
+        ], 3);
+
+        // The empty shape ({"url":[]}) is assumed from the pricing endpoint's captured
+        // empty body, which wraps its lists the same way.
+        return GetUrlsResponse::from([
+            'urls' => $this->productList($response, 'url', 'urls'),
+        ]);
+    }
+
+    /**
+     * POST $payload to $endpoint and return the 2xx response.
+     *
+     * @throws RuntimeException on a non-2xx response (the HTTP status is the code) or a
+     *                          transport failure (code 0, the cause chained as previous)
+     */
+    private function send(string $endpoint, array $payload, int $retryCount): Response
+    {
         try {
             $response = $this->makeRequest(
                 'post',
-                rtrim($this->baseUrl, '/').'/update-product',
-                $request->toArray(),
-                3,
+                rtrim($this->baseUrl, '/').'/'.$endpoint,
+                $payload,
+                $retryCount,
             );
         } catch (Throwable $e) {
             throw new RuntimeException('Price2Spy API request failed: '.$e->getMessage(), $e->getCode(), $e);
@@ -167,6 +250,29 @@ class Price2SpyApiClient
         if (! $response->successful()) {
             throw new RuntimeException('Price2Spy API request failed: '.$response->body(), $response->status());
         }
+
+        return $response;
+    }
+
+    /**
+     * The id a create endpoint returns as its whole 2xx body: a positive JSON integer. The
+     * vendor's Swagger (https://api.price2spy.com/rest/v2/api-docs) declares the 201 schema of
+     * insert-product and insert-url as a bare `integer`.
+     *
+     * @throws CreatedIdUnknownException
+     */
+    private function newId(Response $response, string $kind): int
+    {
+        $id = $response->json();
+
+        if (is_int($id) && $id > 0) {
+            return $id;
+        }
+
+        throw new CreatedIdUnknownException(
+            "Price2Spy API did not return a new id for the created {$kind}; the {$kind} was created, so do not retry: ".mb_strimwidth($response->body(), 0, 500, '...'),
+            $response->status(),
+        );
     }
 
     /**

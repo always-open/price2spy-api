@@ -1,8 +1,13 @@
 # price2spy-api
 
 A Laravel client for the [Price2Spy](https://www.price2spy.com/) REST API. It reads your product
-catalogue and current pricing data, and updates product settings. Responses hydrate into typed
+catalogue, current pricing data, and competitor URLs, creates products and URLs, and updates
+their settings. Responses hydrate into typed
 [laravel-data](https://spatie.be/docs/laravel-data) objects.
+
+Price2Spy publishes the API's request and response schemas in its
+[Swagger UI](https://api.price2spy.com/rest/swagger-ui.html), with the raw Swagger 2.0 document at
+`https://api.price2spy.com/rest/v2/api-docs`.
 
 ## Requirements
 
@@ -64,6 +69,10 @@ $client = new Price2SpyApiClient(apiKey: 'another-key', timeout: 60);
 | [`getProducts()`](#getproducts) | `POST /get-products` | `GetProductsResponse` |
 | [`getCurrentPricingData()`](#getcurrentpricingdata) | `POST /get-current-pricing-data` | `CurrentPricingDataResponse` |
 | [`updateProduct()`](#updateproduct) | `POST /update-product` | nothing |
+| [`insertProduct()`](#insertproduct) | `POST /insert-product` | the new product ID (`int`) |
+| [`getUrls()`](#geturls) | `POST /get-urls` | `GetUrlsResponse` |
+| [`insertUrl()`](#inserturl) | `POST /insert-url` | the new URL ID (`int`) |
+| [`updateUrl()`](#updateurl) | `POST /update-url` | nothing |
 
 ### getProducts()
 
@@ -137,6 +146,93 @@ Price2SpyApiFacade::updateProduct(new UpdateProductRequest(
 `checkFrequencyInterval`, `targetPrice`, `costPrice`, `comment1`, `comment2`, `customField1`
 through `customField10`, and `metadata1Name` through `metadata3Name`.
 
+### insertProduct()
+
+```php
+insertProduct(InsertProductRequest $request): int
+```
+
+Creates a product and returns its new Price2Spy product ID. Only the fields you set are sent.
+
+```php
+use AlwaysOpen\Price2SpyApi\DTOs\InsertProductRequest;
+
+$productId = Price2SpyApiFacade::insertProduct(new InsertProductRequest(
+    productName: 'SYSTANE COMPLETE Lubricant Eye Drops 10ml',
+    sku: 'SYS-10',
+    brandName: 'Systane',
+));
+```
+
+`productName` is required. The optional fields are the same as `updateProduct()`'s, without
+`productId`.
+
+### getUrls()
+
+```php
+getUrls(string $id, string $idMode = 'ID', string $searchMode = 'EQUAL'): GetUrlsResponse
+```
+
+Returns competitor URLs with their check health: whether each is active, how many checks in a
+row failed, the last error, and the last two price checks.
+
+- `$id`: the value to search for.
+- `$idMode`: which identifier `$id` is matched against: `'ID'`, `'SKU'`, `'INTERNAL_ID'`,
+  `'NAME'`, or `'ANY'`.
+- `$searchMode`: `'EQUAL'` for an exact match, or `'LIKE'` for a partial one.
+
+```php
+$urls = Price2SpyApiFacade::getUrls('SYS-10', idMode: 'SKU')->urls;
+
+foreach ($urls as $url) {
+    if ($url->counterFailed > 0) {
+        echo "{$url->url}: {$url->lastError}\n";
+    }
+}
+```
+
+`urls` is a list of `ProductUrl` objects, and it's empty when nothing matches.
+
+### insertUrl()
+
+```php
+insertUrl(InsertUrlRequest $request): int
+```
+
+Adds a competitor URL to a product and returns its new Price2Spy URL ID. Only the fields you
+set are sent.
+
+```php
+use AlwaysOpen\Price2SpyApi\DTOs\InsertUrlRequest;
+
+$urlId = Price2SpyApiFacade::insertUrl(new InsertUrlRequest(
+    productId: $productId,
+    url: 'https://www.example.com/p/systane-complete',
+));
+```
+
+`productId` and `url` are required. The optional fields are `active`, `showInReports`, and
+`note1` through `note3`.
+
+### updateUrl()
+
+```php
+updateUrl(UpdateUrlRequest $request): void
+```
+
+Updates one URL's settings. Only the fields you set are sent; Price2Spy leaves every other
+field unchanged.
+
+```php
+use AlwaysOpen\Price2SpyApi\DTOs\UpdateUrlRequest;
+
+// Stop checking a URL, and reset its failure count.
+Price2SpyApiFacade::updateUrl(new UpdateUrlRequest(urlId: $urlId, active: false, counterFailed: 0));
+```
+
+`urlId` is required. The optional fields are `url`, `active`, `showInReports`,
+`counterFailed`, and `note1` through `note3`.
+
 ## Response objects
 
 All response objects live in `AlwaysOpen\Price2SpyApi\DTOs`. Every property is nullable,
@@ -149,8 +245,10 @@ because Price2Spy omits fields that have no value.
   `maxPrice`, `checkFrequencyType`, `checkFrequencyInterval`, `lastChecked`, `nextChecked`,
   `customField1` through `customField3`, and more. On `getCurrentPricingData()`, `urls`
   holds the product's `ProductUrl` objects.
-- `ProductUrl` is one competitor URL: `url`, `siteHumanName`, `siteCountryISOCode`,
-  `active`, `lastChecked`, `lastError`, `lastMeasurement`, and `secondToLastMeasurement`.
+- `GetUrlsResponse` has a `urls` list of `ProductUrl` objects.
+- `ProductUrl` is one competitor URL: `urlId`, `url`, `siteHumanName`, `siteCountryISOCode`,
+  `active`, `showInReports`, `counterFailed`, `lastChecked`, `lastError`, `lastMeasurement`,
+  and `secondToLastMeasurement`.
 - `Measurement` is one price check: `dateChecked`, `price`, `available`, `stockStatus`, and
   `isOnPromotion`.
 - `Price` is an `amount` and its `currency`.
@@ -165,22 +263,41 @@ Every method throws a `RuntimeException` for these failures:
 |---|---|---|
 | Non-2xx response | `RuntimeException`, with the response body in its message | The HTTP status |
 | Transport failure, such as a timeout or a refused connection | `RuntimeException`, with the `ConnectionException` as its previous exception | `0` |
-| 2xx response whose body isn't the expected shape (read methods only) | `MalformedResponseException` | The HTTP status |
+| 2xx response whose body isn't the expected list, from a read method | `MalformedResponseException` | The HTTP status |
+| 2xx response whose body isn't a positive integer ID, from `insertProduct()` or `insertUrl()` | `CreatedIdUnknownException`, a `MalformedResponseException` | The HTTP status |
 
 `MalformedResponseException` extends `RuntimeException`, so catching `RuntimeException`
-catches all three.
+catches all of them.
+
+`CreatedIdUnknownException` isn't a failed create. Price2Spy answered 2xx, so the product or
+URL exists; only its new ID is missing. Don't retry the create, or you'll end up with a
+duplicate. Catch it before any `RuntimeException` handler that retries, and look the item up
+as described below to learn its ID.
 
 The shape check covers the list, not each field's type. When a product in a 2xx response has a
 field of an unexpected type, hydration fails and laravel-data's exception reaches you
 unchanged.
 
 A request that hits a transport failure is attempted up to 3 times in total, 2 seconds apart,
-before the exception is thrown. A non-2xx response isn't retried.
+before the exception is thrown. `insertProduct()` and `insertUrl()` are the exception: they're
+attempted once, because a create that timed out may have been applied, and repeating it could
+create a duplicate. A non-2xx response isn't retried.
 
 For `updateProduct()`, code `0` means the outcome is unknown, not that the update was skipped:
 a request that timed out may still have been applied. Before you treat it as a failure,
 re-read the product with `getProducts(p2sProductId: ...)`. Retrying is safe, because every
-field sets an absolute value.
+field sets an absolute value. The same holds for `updateUrl()`; re-read the URL with
+`getUrls()`.
+
+For `insertProduct()` and `insertUrl()`, code `0` also leaves the outcome unknown. Before you
+create the item again, look for it, or you may end up with a duplicate:
+
+- **`insertProduct()`:** `getProducts()` filters only by `active` and `p2sProductId`, and you
+  don't have the new product's ID, so read the catalog and match on a field you sent, such as
+  `sku` or `internalId`. Read with `active: false` too if you created the product inactive.
+  A new product has no URLs yet, so `getUrls()` can't find it.
+- **`insertUrl()`:** call `getCurrentPricingData(p2sProductId: $productId)` and look for your
+  `url` in the product's `urls`. Each match carries its `urlId`.
 
 ## Testing
 
