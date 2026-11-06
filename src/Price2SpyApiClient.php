@@ -144,6 +144,10 @@ class Price2SpyApiClient
      * Price2Spy leaves the rest unchanged. The 2xx body is untyped, so nothing is read
      * from it.
      *
+     * A transport failure (code 0) leaves the outcome unknown: a timed-out request may
+     * still have been applied, so re-read the product with getProducts() before treating
+     * it as not applied.
+     *
      * @throws RuntimeException on a non-2xx response (the HTTP status is the code) or a
      *                          transport failure (code 0, the cause chained as previous)
      */
