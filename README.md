@@ -259,10 +259,16 @@ Every method throws a `RuntimeException` for these failures:
 |---|---|---|
 | Non-2xx response | `RuntimeException`, with the response body in its message | The HTTP status |
 | Transport failure, such as a timeout or a refused connection | `RuntimeException`, with the `ConnectionException` as its previous exception | `0` |
-| 2xx response whose body isn't the expected shape: a list for the read methods, a positive integer ID for `insertProduct()` and `insertUrl()` | `MalformedResponseException` | The HTTP status |
+| 2xx response whose body isn't the expected list, from a read method | `MalformedResponseException` | The HTTP status |
+| 2xx response whose body isn't a positive integer ID, from `insertProduct()` or `insertUrl()` | `CreatedIdUnknownException`, a `MalformedResponseException` | The HTTP status |
 
 `MalformedResponseException` extends `RuntimeException`, so catching `RuntimeException`
-catches all three.
+catches all of them.
+
+`CreatedIdUnknownException` isn't a failed create. Price2Spy answered 2xx, so the product or
+URL exists; only its new ID is missing. Don't retry the create, or you'll end up with a
+duplicate. Catch it before any `RuntimeException` handler that retries, and look the item up
+as described below to learn its ID.
 
 The shape check covers the list, not each field's type. When a product in a 2xx response has a
 field of an unexpected type, hydration fails and laravel-data's exception reaches you
@@ -280,8 +286,14 @@ field sets an absolute value. The same holds for `updateUrl()`; re-read the URL 
 `getUrls()`.
 
 For `insertProduct()` and `insertUrl()`, code `0` also leaves the outcome unknown. Before you
-create the item again, look for it with `getUrls()` or `getProducts()`, or you may end up with
-a duplicate.
+create the item again, look for it, or you may end up with a duplicate:
+
+- **`insertProduct()`:** `getProducts()` filters only by `active` and `p2sProductId`, and you
+  don't have the new product's ID, so read the catalog and match on a field you sent, such as
+  `sku` or `internalId`. Read with `active: false` too if you created the product inactive.
+  A new product has no URLs yet, so `getUrls()` can't find it.
+- **`insertUrl()`:** call `getCurrentPricingData(p2sProductId: $productId)` and look for your
+  `url` in the product's `urls`. Each match carries its `urlId`.
 
 ## Testing
 

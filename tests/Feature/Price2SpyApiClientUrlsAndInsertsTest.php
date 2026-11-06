@@ -5,6 +5,7 @@ namespace AlwaysOpen\Price2SpyApi\Tests\Feature;
 use AlwaysOpen\Price2SpyApi\DTOs\InsertProductRequest;
 use AlwaysOpen\Price2SpyApi\DTOs\InsertUrlRequest;
 use AlwaysOpen\Price2SpyApi\DTOs\UpdateUrlRequest;
+use AlwaysOpen\Price2SpyApi\Exceptions\CreatedIdUnknownException;
 use AlwaysOpen\Price2SpyApi\Exceptions\MalformedResponseException;
 use AlwaysOpen\Price2SpyApi\Price2SpyApiClient;
 use AlwaysOpen\Price2SpyApi\Price2SpyApiFacade;
@@ -155,11 +156,15 @@ class Price2SpyApiClientUrlsAndInsertsTest extends BaseTest
 
         try {
             $this->calls()[$method](new Price2SpyApiClient);
-            $this->fail('Expected a MalformedResponseException.');
-        } catch (MalformedResponseException $e) {
+            $this->fail('Expected a CreatedIdUnknownException.');
+        } catch (CreatedIdUnknownException $e) {
+            $this->assertInstanceOf(MalformedResponseException::class, $e);
             $this->assertSame(201, $e->getCode());
             $this->assertStringContainsString('did not return a new id', $e->getMessage());
+            $this->assertStringContainsString('was created, so do not retry', $e->getMessage());
         }
+
+        Http::assertSentCount(1);
     }
 
     public static function malformedIdBodies(): array

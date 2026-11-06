@@ -9,6 +9,7 @@ use AlwaysOpen\Price2SpyApi\DTOs\InsertProductRequest;
 use AlwaysOpen\Price2SpyApi\DTOs\InsertUrlRequest;
 use AlwaysOpen\Price2SpyApi\DTOs\UpdateProductRequest;
 use AlwaysOpen\Price2SpyApi\DTOs\UpdateUrlRequest;
+use AlwaysOpen\Price2SpyApi\Exceptions\CreatedIdUnknownException;
 use AlwaysOpen\Price2SpyApi\Exceptions\MalformedResponseException;
 use GuzzleHttp\Promise\PromiseInterface;
 use GuzzleHttp\Psr7\Request;
@@ -167,7 +168,8 @@ class Price2SpyApiClient
      *
      * @throws RuntimeException on a non-2xx response (the HTTP status is the code) or a
      *                          transport failure (code 0, the cause chained as previous)
-     * @throws MalformedResponseException when a 2xx body is not the new id
+     * @throws CreatedIdUnknownException when a 2xx body is not the new id; the item was
+     *                                   created, so do not retry
      */
     public function insertProduct(InsertProductRequest $request): int
     {
@@ -180,7 +182,8 @@ class Price2SpyApiClient
      *
      * @throws RuntimeException on a non-2xx response (the HTTP status is the code) or a
      *                          transport failure (code 0, the cause chained as previous)
-     * @throws MalformedResponseException when a 2xx body is not the new id
+     * @throws CreatedIdUnknownException when a 2xx body is not the new id; the item was
+     *                                   created, so do not retry
      */
     public function insertUrl(InsertUrlRequest $request): int
     {
@@ -254,7 +257,7 @@ class Price2SpyApiClient
     /**
      * The id a create endpoint returns as its whole 2xx body: a positive JSON integer.
      *
-     * @throws MalformedResponseException
+     * @throws CreatedIdUnknownException
      */
     private function newId(Response $response, string $kind): int
     {
@@ -264,8 +267,8 @@ class Price2SpyApiClient
             return $id;
         }
 
-        throw new MalformedResponseException(
-            "Price2Spy API did not return a new id for the created {$kind}: ".mb_strimwidth($response->body(), 0, 500, '...'),
+        throw new CreatedIdUnknownException(
+            "Price2Spy API did not return a new id for the created {$kind}; the {$kind} was created, so do not retry: ".mb_strimwidth($response->body(), 0, 500, '...'),
             $response->status(),
         );
     }
