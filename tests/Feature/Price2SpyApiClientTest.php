@@ -2,10 +2,15 @@
 
 namespace AlwaysOpen\Price2SpyApi\Tests\Feature;
 
+use AlwaysOpen\Price2SpyApi\DTOs\UpdateProductRequest;
 use AlwaysOpen\Price2SpyApi\Exceptions\MalformedResponseException;
 use AlwaysOpen\Price2SpyApi\Price2SpyApiClient;
+use AlwaysOpen\Price2SpyApi\Price2SpyApiFacade;
 use AlwaysOpen\Price2SpyApi\Tests\BaseTest;
+use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Sleep;
 use PHPUnit\Framework\Attributes\DataProvider;
 use RuntimeException;
 
@@ -289,5 +294,134 @@ class Price2SpyApiClientTest extends BaseTest
         $this->expectExceptionMessage('Price2Spy API request failed');
 
         $client->getProducts();
+    }
+
+    public function test_update_product_sends_only_the_set_fields()
+    {
+        Http::fake([
+            'https://api.price2spy.com/rest/v1/update-product' => Http::response('{}', 200),
+        ]);
+
+        $client = new Price2SpyApiClient(apiKey: 'test-key');
+
+        $client->updateProduct(new UpdateProductRequest(productId: 550487637, active: false));
+
+        Http::assertSentCount(1);
+        Http::assertSent(function (Request $request) {
+            return $request->method() === 'POST'
+                && $request->url() === 'https://api.price2spy.com/rest/v1/update-product'
+                && $request->body() === '{"productId":550487637,"active":false}'
+                && $request->header('Authorization') === ['Basic '.base64_encode('test-key')]
+                && $request->header('Content-Type') === ['application/json'];
+        });
+    }
+
+    public function test_update_product_sends_clearing_values_and_omits_null_fields()
+    {
+        Http::fake([
+            'https://api.price2spy.com/rest/v1/update-product' => Http::response('{}', 200),
+        ]);
+
+        $client = new Price2SpyApiClient;
+
+        $client->updateProduct(new UpdateProductRequest(
+            productId: 550487637,
+            sku: '',
+            targetPrice: 0.0,
+            checkFrequencyInterval: 0,
+            comment1: '',
+            customField2: null,
+        ));
+
+        Http::assertSent(function (Request $request) {
+            return $request->data() === [
+                'productId' => 550487637,
+                'sku' => '',
+                'checkFrequencyInterval' => 0,
+                'targetPrice' => 0.0,
+                'comment1' => '',
+            ];
+        });
+    }
+
+    public function test_update_product_is_callable_through_the_facade()
+    {
+        Http::fake([
+            'https://api.price2spy.com/rest/v1/update-product' => Http::response('{}', 200),
+        ]);
+
+        Price2SpyApiFacade::updateProduct(new UpdateProductRequest(productId: 550487637, active: true));
+
+        Http::assertSent(function (Request $request) {
+            return $request->url() === 'https://api.price2spy.com/rest/v1/update-product'
+                && $request->data() === ['productId' => 550487637, 'active' => true];
+        });
+    }
+
+    public function test_update_product_returns_on_a_2xx_response()
+    {
+        Http::fake([
+            'https://api.price2spy.com/rest/v1/update-product' => Http::response('', 204),
+        ]);
+
+        $client = new Price2SpyApiClient;
+
+        $client->updateProduct(new UpdateProductRequest(productId: 550487637, active: true));
+
+        Http::assertSentCount(1);
+    }
+
+    #[DataProvider('failedUpdateStatuses')]
+    public function test_update_product_failed_request_carries_the_status_as_the_code(int $status)
+    {
+        Http::fake([
+            'https://api.price2spy.com/rest/v1/update-product' => Http::response('error body', $status),
+        ]);
+
+        $client = new Price2SpyApiClient;
+
+        try {
+            $client->updateProduct(new UpdateProductRequest(productId: 550487637, active: false));
+            $this->fail('Expected a RuntimeException.');
+        } catch (RuntimeException $e) {
+            $this->assertSame($status, $e->getCode());
+            $this->assertSame('Price2Spy API request failed: error body', $e->getMessage());
+        }
+
+        Http::assertSentCount(1);
+    }
+
+    public static function failedUpdateStatuses(): array
+    {
+        return [
+            'unauthorized' => [401],
+            'not found' => [404],
+            'too many requests' => [429],
+            'server error' => [500],
+        ];
+    }
+
+    public function test_update_product_transport_failure_chains_the_connection_exception()
+    {
+        Sleep::fake();
+        $attempts = 0;
+        Http::fake(function () use (&$attempts) {
+            $attempts++;
+
+            throw new ConnectionException('cURL error 28: Operation timed out');
+        });
+
+        $client = new Price2SpyApiClient;
+
+        try {
+            $client->updateProduct(new UpdateProductRequest(productId: 550487637, active: false));
+            $this->fail('Expected a RuntimeException.');
+        } catch (RuntimeException $e) {
+            $this->assertNotInstanceOf(ConnectionException::class, $e);
+            $this->assertSame(0, $e->getCode());
+            $this->assertInstanceOf(ConnectionException::class, $e->getPrevious());
+        }
+
+        $this->assertSame(3, $attempts);
     }
 }
