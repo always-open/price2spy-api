@@ -22,3 +22,37 @@ Code `0` means the outcome is unknown, not that the update was skipped: a reques
 timed out may still have been applied. Before you treat it as a failure, re-read the product
 with `getProducts(p2sProductId: ...)`. Retrying is safe, because every field sets an absolute
 value.
+
+## Creating products and URLs
+
+`insertProduct()` and `insertUrl()` return the new Price2Spy id. They are never retried: a
+create is not idempotent, so a replay after a lost response could create a duplicate.
+
+```php
+use AlwaysOpen\Price2SpyApi\DTOs\InsertProductRequest;
+use AlwaysOpen\Price2SpyApi\DTOs\InsertUrlRequest;
+use AlwaysOpen\Price2SpyApi\Price2SpyApiFacade;
+
+$productId = Price2SpyApiFacade::insertProduct(new InsertProductRequest(productName: 'Lubricant Eye Drops 10ml', sku: 'SYS-10'));
+$urlId = Price2SpyApiFacade::insertUrl(new InsertUrlRequest(productId: $productId, url: 'https://www.example.com/p/123'));
+```
+
+A 2xx response whose body is not a positive integer throws `MalformedResponseException`.
+
+## Updating and reading URLs
+
+```php
+use AlwaysOpen\Price2SpyApi\DTOs\UpdateUrlRequest;
+
+// Stop checking a URL.
+Price2SpyApiFacade::updateUrl(new UpdateUrlRequest(urlId: $urlId, active: false));
+
+// URLs with their check health: active, counterFailed, lastError, lastChecked.
+$urls = Price2SpyApiFacade::getUrls((string) $productId)->urls;
+
+// Other identifiers: idMode is ID, SKU, INTERNAL_ID, NAME, or ANY; searchMode is EQUAL or LIKE.
+$urls = Price2SpyApiFacade::getUrls('SYS-10', idMode: 'SKU')->urls;
+```
+
+Errors follow `updateProduct()`: a non-2xx response's code is the HTTP status, and a
+transport failure has code `0` with the `ConnectionException` as its previous exception.

@@ -1,0 +1,35 @@
+{
+  "url": [
+    {
+      "urlId": 900001,
+      "url": "https://www.target.com/p/systane-complete-10ml/-/A-12345",
+      "productName": "SYSTANE COMPLETE Lubricant Eye Drops 10ml",
+      "siteHumanName": "Target",
+      "siteCountryISOCode": "US",
+      "showInReports": true,
+      "active": true,
+      "counterFailed": 0,
+      "lastError": null,
+      "lastChecked": "2026-11-05T14:00:00",
+      "lastMeasurement": {
+        "dateChecked": "2026-11-05T14:00:00",
+        "price": {"amount": 14.99, "currency": "USD"},
+        "available": true,
+        "stockStatus": "In stock",
+        "isOnPromotion": false
+      }
+    },
+    {
+      "urlId": 900002,
+      "url": "https://www.kroger.com/p/systane-complete/0030065",
+      "productName": "SYSTANE COMPLETE Lubricant Eye Drops 10ml",
+      "siteHumanName": "Kroger",
+      "siteCountryISOCode": "US",
+      "showInReports": false,
+      "active": false,
+      "counterFailed": 7,
+      "lastError": "HTTP 404",
+      "lastChecked": "2026-11-04T09:30:00"
+    }
+  ]
+}

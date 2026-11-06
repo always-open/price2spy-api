@@ -2,15 +2,16 @@
 
 namespace AlwaysOpen\Price2SpyApi\DTOs;
 
+use AlwaysOpen\Price2SpyApi\DTOs\Concerns\OmitsNullProperties;
 use Spatie\LaravelData\Data;
 
 /**
- * Body of POST /update-product. Price2Spy leaves every omitted field unchanged and
- * clears a field given an empty string or 0, never null, so toArray() drops the
- * null properties and an unset field is never sent.
+ * Body of POST /update-product. Only the non-null properties are sent.
  */
 class UpdateProductRequest extends Data
 {
+    use OmitsNullProperties;
+
     /**
      * @param  'DAYS'|'HOURS'|null  $checkFrequencyType
      */
@@ -43,9 +44,4 @@ class UpdateProductRequest extends Data
         public readonly ?string $metadata2Name = null,
         public readonly ?string $metadata3Name = null,
     ) {}
-
-    public function toArray(): array
-    {
-        return array_filter(parent::toArray(), fn ($value) => $value !== null);
-    }
 }
