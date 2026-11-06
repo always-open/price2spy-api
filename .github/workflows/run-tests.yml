@@ -14,9 +14,7 @@ jobs:
       matrix:
         os: [ubuntu-latest]
         php: [8.3, 8.4, 8.5]
-        laravel: [11.*]
-        include:
-          - laravel: 11.*
+        laravel: [12.*, 13.*]
 
     name: P${{ matrix.php }} - L${{ matrix.laravel }} - ${{ matrix.os }}
 
@@ -35,6 +33,9 @@ jobs:
         run: |
           echo "::add-matcher::${{ runner.tool_cache }}/php.json"
           echo "::add-matcher::${{ runner.tool_cache }}/phpunit.json"
+
+      - name: Pin Laravel version
+        run: composer require "laravel/framework:${{ matrix.laravel }}" --no-interaction --no-update
 
       - name: Install composer dependencies
         uses: ramsey/composer-install@v3
