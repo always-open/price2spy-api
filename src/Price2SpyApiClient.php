@@ -255,7 +255,9 @@ class Price2SpyApiClient
     }
 
     /**
-     * The id a create endpoint returns as its whole 2xx body: a positive JSON integer.
+     * The id a create endpoint returns as its whole 2xx body: a positive JSON integer. The
+     * vendor's Swagger (https://api.price2spy.com/rest/v2/api-docs) declares the 201 schema of
+     * insert-product and insert-url as a bare `integer`.
      *
      * @throws CreatedIdUnknownException
      */

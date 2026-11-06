@@ -5,6 +5,10 @@ catalogue, current pricing data, and competitor URLs, creates products and URLs,
 their settings. Responses hydrate into typed
 [laravel-data](https://spatie.be/docs/laravel-data) objects.
 
+Price2Spy publishes the API's request and response schemas in its
+[Swagger UI](https://api.price2spy.com/rest/swagger-ui.html), with the raw Swagger 2.0 document at
+`https://api.price2spy.com/rest/v2/api-docs`.
+
 ## Requirements
 
 - PHP 8.3 (8.3.1 or later), 8.4 (8.4.1 or later), or 8.5
