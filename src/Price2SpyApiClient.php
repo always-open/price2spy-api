@@ -4,6 +4,7 @@ namespace AlwaysOpen\Price2SpyApi;
 
 use AlwaysOpen\Price2SpyApi\DTOs\CurrentPricingDataResponse;
 use AlwaysOpen\Price2SpyApi\DTOs\GetProductsResponse;
+use AlwaysOpen\Price2SpyApi\DTOs\UpdateProductRequest;
 use AlwaysOpen\Price2SpyApi\Exceptions\MalformedResponseException;
 use GuzzleHttp\Promise\PromiseInterface;
 use GuzzleHttp\Psr7\Request;
@@ -136,6 +137,36 @@ class Price2SpyApiClient
         return GetProductsResponse::from([
             'products' => $products,
         ]);
+    }
+
+    /**
+     * Update one product's settings. Only the request's non-null fields are sent;
+     * Price2Spy leaves the rest unchanged. The 2xx body is untyped, so nothing is read
+     * from it.
+     *
+     * A transport failure (code 0) leaves the outcome unknown: a timed-out request may
+     * still have been applied, so re-read the product with getProducts() before treating
+     * it as not applied.
+     *
+     * @throws RuntimeException on a non-2xx response (the HTTP status is the code) or a
+     *                          transport failure (code 0, the cause chained as previous)
+     */
+    public function updateProduct(UpdateProductRequest $request): void
+    {
+        try {
+            $response = $this->makeRequest(
+                'post',
+                rtrim($this->baseUrl, '/').'/update-product',
+                $request->toArray(),
+                3,
+            );
+        } catch (Throwable $e) {
+            throw new RuntimeException('Price2Spy API request failed: '.$e->getMessage(), $e->getCode(), $e);
+        }
+
+        if (! $response->successful()) {
+            throw new RuntimeException('Price2Spy API request failed: '.$response->body(), $response->status());
+        }
     }
 
     /**
