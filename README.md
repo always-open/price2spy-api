@@ -6,7 +6,7 @@ catalogue and current pricing data, and updates product settings. Responses hydr
 
 ## Requirements
 
-- PHP 8.3, 8.4, or 8.5
+- PHP 8.3 (8.3.1 or later), 8.4 (8.4.1 or later), or 8.5
 - Laravel 10, 11, or 12
 
 ## Installation
@@ -159,7 +159,7 @@ Dates are the strings Price2Spy returns.
 
 ## Errors and retries
 
-Every method throws a `RuntimeException` when a call fails:
+Every method throws a `RuntimeException` for these failures:
 
 | Failure | Exception | Code |
 |---|---|---|
@@ -169,6 +169,10 @@ Every method throws a `RuntimeException` when a call fails:
 
 `MalformedResponseException` extends `RuntimeException`, so catching `RuntimeException`
 catches all three.
+
+The shape check covers the list, not each field's type. When a product in a 2xx response has a
+field of an unexpected type, hydration fails and laravel-data's exception reaches you
+unchanged.
 
 A request that hits a transport failure is attempted up to 3 times in total, 2 seconds apart,
 before the exception is thrown. A non-2xx response isn't retried.
